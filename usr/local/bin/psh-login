@@ -1,0 +1,59 @@
+#!/bin/bash
+
+## Script to intelligently login to servers using pre-setup SSH-keys
+## Authors: Seff P.
+## Version: 20200406
+
+source /etc/psh/default.conf
+
+FULL_PATH=$1
+
+# Check if the file in argument exists
+if [[ -z "$FULL_PATH" ]]
+        then
+        echo -e "${R}ERROR: No argument given!${W}"
+        exit 1 # No input
+elif [[ ! -f $FULL_PATH ]]
+        then
+        echo -e "${R}ERROR: File $FULL_PATH does not exists!${W}"
+        exit 4 # Not found
+fi
+
+PTS=$(tty | grep -Po pts.*)
+REAL_USER=$(who | grep -w $PTS | awk {'print $1'})
+PTS=$(tty | grep -Po pts.*)
+SSH_CHOST=$(who | grep -w $PTS | awk {'print $5'})
+DATE_TIME=$(date +%Y%m%d%H%M)
+CMD=$(cat $FULL_PATH)
+SERVER_NAME=$(basename $FULL_PATH)
+
+if [[ "$(stat -c %G $FULL_PATH)" == "superadmin" ]]
+        then
+        if ! [[ "$(groups $REAL_USER)" =~ "superadmin" ]]
+                then
+                dialog --colors --msgbox "\Z1Access Restricted! Please contact administrator if needed.\Zn" 5 63
+                echo "$(date +'[%F %T %Z]') - $REAL_USER $SSH_CHOST: Login attempt to $SERVER_NAME blocked. Not a member of superadmin" >> $LOGIN_LOG
+                exit 3 # Forbidden
+        fi
+fi
+
+mkdir -p ${SESSION_LOG_PATH}/${SERVER_NAME}
+if [[ $CMD == ssh* ]]
+then
+        echo -e "\n${G}Logging in to:${W} $SERVER_NAME"
+        echo -e "${G}Executing the command:${W} $CMD\n"
+        SESSION_LOG_FILE=${SESSION_LOG_PATH}/${SERVER_NAME}/${SERVER_NAME}-${REAL_USER}-$$-${DATE_TIME}.log
+        echo "$(date +'[%F %T %Z]') - $REAL_USER $SSH_CHOST: Logging into $SERVER_NAME (Session ID: $(cat /proc/$$/loginuid)-$$)" >> $LOGIN_LOG
+        TIME_LOGIN=$(date +%s)
+        $CMD $SSH_EXTRA_OPT | tee -a $SESSION_LOG_FILE
+        EXIT_CODE=$PIPESTATUS
+        TIME_LOGOUT=$(date +%s)
+        TIME_TOTAL=$(($TIME_LOGOUT-$TIME_LOGIN))
+        TIME_SPENT=$(date -ud "@$TIME_TOTAL" +'%Hh:%Mm:%Ss')
+        echo "$(date +'[%F %T %Z]') - $REAL_USER $SSH_CHOST: Logout from $SERVER_NAME (Exit code: $EXIT_CODE, Duration: $TIME_SPENT, Session ID: $(cat /proc/$$/loginuid)-$$)" >> $LOGIN_LOG
+        echo -e "\n${Y}Exiting from:${W} $SERVER_NAME (Exit code: $EXIT_CODE, Session Duration: $TIME_SPENT)"
+else
+        echo -e "${R}ERROR: Invalid Command!${W}"
+        exit 5 # Invalid Command
+
+fi
