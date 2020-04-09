@@ -1,0 +1,145 @@
+#!/bin/bash
+
+# Interactive menu to select or search servers and pass to psh script
+# Author: Seff P.
+# Version: 20200409
+
+source /etc/psh/default.conf
+
+cleanExit () {
+        clear && exit 0
+}
+
+trap cleanExit INT
+
+mainMenu () {
+        MAIN_MENU=$(dialog  --stdout --no-ok --no-cancel  --backtitle "$MAIN_TITLE" --menu "Select an Option" 0 50 0 1 "Search a hostname or IP" 2 "Select a ${CATEGORY} from list" 3 "View recent history")
+        # echo $MAIN_MENU
+        case $MAIN_MENU in
+                1)
+                        searchServer
+                        ;;
+                2)
+                        selectCategory
+                        ;;
+                3)
+                        viewHistory
+                        ;;
+                *)
+                        cleanExit
+                        ;;
+        esac
+}
+
+selectCategory () {
+        CATEGORY_LIST=$(ls -1 $ROOT_DIR | nl)
+        CATEGORY_INDEX=$(dialog --stdout --scrollbar --no-ok --no-cancel --menu "Select a ${CATEGORY}" 0 0 0 "<-" "Back to Main Menu" $CATEGORY_LIST)
+        if [[ $CATEGORY_INDEX == "<-" || -z $CATEGORY_INDEX ]]
+                then mainMenu
+        else
+                CATEGORY_NAME=$(echo "$CATEGORY_LIST" | grep -w "$CATEGORY_INDEX" | awk {'print $2'})
+                selectServer
+        fi
+}
+
+selectServer () {
+        SERVER_LIST=$(ls -1 $ROOT_DIR/$CATEGORY_NAME | nl)
+        SERVER_INDEX=$(dialog --stdout --scrollbar --no-ok --no-cancel --menu "Select a Server" 0 0 0 "<-" "Back to ${CATEGORY} list" $SERVER_LIST)
+        if [[ $SERVER_INDEX == "<-" || -z $SERVER_INDEX ]]
+                then
+                selectCategory
+        else
+                SERVER_NAME=$(echo "$SERVER_LIST" | grep -w "$SERVER_INDEX" | awk {'print $2'})
+                FULL_PATH="$ROOT_DIR/$CATEGORY_NAME/$SERVER_NAME"
+        fi
+}
+
+viewHistory () {
+        HISTORY_LIST=$(cut -d' ' -f1 ${PSH_HISTORY_FILE} | tail -n ${PSH_HISTORY_LENGTH} | tac | nl)
+        HISTORY_INDEX=$(dialog --stdout --scrollbar --no-ok --no-cancel --menu "Select a server" 0 0 0 "<-" "Back to Main Menu" ${HISTORY_LIST})
+        if [[ $HISTORY_INDEX == "<-" || -z $HISTORY_INDEX ]]
+                then mainMenu
+        else
+                HISTORY_ITEM=$(echo "$HISTORY_LIST" | grep -w "$HISTORY_INDEX" | awk {'print $2'})
+                searchServer $HISTORY_ITEM
+        fi
+}
+
+saveHistory() {
+        ENTRY=$(echo "$1" | xargs -L 1 basename)
+        echo "$(tail -n ${PSH_HISTORY_LENGTH} ${PSH_HISTORY_FILE})" > ${PSH_HISTORY_FILE}
+        sed -i "/$ENTRY/d" ${PSH_HISTORY_FILE}
+        echo "$ENTRY" >> ${PSH_HISTORY_FILE}
+}
+
+searchServer () {
+        if [ "$1" ]
+                then INPUT=$1
+        else
+                INPUT=$(dialog --stdout --no-cancel --inputbox "Search a hostname or IP" 0 50)
+        fi
+        INPUT=$(echo $INPUT | sed 's/\.$//g')
+        # echo "DEBUG: input is $INPUT"
+        if [ "$INPUT" ]
+                then
+                if echo "$INPUT" | grep -Pq "^[\d]+\.[\d]+\.[\d]+\.[\d]+\$"
+                        then
+                        # echo "DEBUG: input $INPUT is an IP"
+                        INPUT=$(dig +short -x $INPUT)
+                        searchServer $INPUT
+                        return
+                fi
+                MATCHES_FULLPATH=$(find -L $ROOT_DIR -iname "*$INPUT*" -type f)
+                MATCHES_COUNT=$(echo "$MATCHES_FULLPATH" | grep -c .)
+
+                if [[ $MATCHES_COUNT == 0 ]]
+                        then
+                        IP_FROM_DOMAIN=$(dig +short "$INPUT" | head -1)
+                        if [[ "$IP_FROM_DOMAIN" && -z "$RDNS_TRIED" ]]
+                                then
+                                RDNS_TRIED=true
+                                SEARCH_DOMAIN=$INPUT
+                                searchServer $IP_FROM_DOMAIN
+                        else
+                                dialog --colors --msgbox "\Z1No matches found!\Zn" 7 50
+                                unset SEARCH_DOMAIN
+                                unset RDNS_TRIED
+                                CLEAR=1
+                                searchServer
+                        fi
+                        return
+                elif [[ $MATCHES_COUNT == 1 ]]
+                        then FULL_PATH=$MATCHES_FULLPATH
+                else
+                        CLEAR=1
+                        MATCHES_INDEXED=$(echo "$MATCHES_FULLPATH" | xargs -L 1 basename | nl)
+                        FULL_PATH_INDEX=$(dialog --stdout --scrollbar --no-ok --no-cancel --menu "Multiple matches found" 0 0 0  "<-" "Search again" $MATCHES_INDEXED)
+                        if [[ $FULL_PATH_INDEX == "<-" || -z $FULL_PATH_INDEX ]]
+                                then
+                                searchServer
+                                return
+                        else
+                                SERVER_NAME=$(echo "$MATCHES_INDEXED" | grep -w "$FULL_PATH_INDEX" | awk {'print $2'})
+                                searchServer $SERVER_NAME
+                        fi
+                fi
+        else
+                mainMenu
+        fi
+}
+
+# Check if search string is passed from client's machine
+if [ $LC_0 ]
+        then
+        searchServer $LC_0
+else
+        mainMenu
+        CLEAR=1
+fi
+[[ "$CLEAR" ]] && clear
+
+saveHistory ${FULL_PATH}
+sudo ${PSH_LOGIN_BIN} ${FULL_PATH} ${SEARCH_DOMAIN}
+
+unset LC_0
+exec ${PSH_MENU_BIN}
