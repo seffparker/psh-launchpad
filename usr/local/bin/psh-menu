@@ -19,7 +19,6 @@ trap cleanExit INT
 
 mainMenu () {
         MAIN_MENU=$(dialog  --stdout --no-ok --no-cancel  --backtitle "$MAIN_TITLE" --menu "Select an Option" 0 50 0 1 "Search a hostname or IP" 2 "Select a ${CATEGORY} from list" 3 "View recent history")
-        # echo $MAIN_MENU
         case $MAIN_MENU in
                 1)
                         searchServer
@@ -42,7 +41,7 @@ selectCategory () {
         if [[ $CATEGORY_INDEX == "<-" || -z $CATEGORY_INDEX ]]
                 then mainMenu
         else
-                CATEGORY_NAME=$(echo "$CATEGORY_LIST" | grep -w "$CATEGORY_INDEX" | awk {'print $2'})
+                CATEGORY_NAME=$(echo "$CATEGORY_LIST" | awk -v INDEX=$CATEGORY_INDEX '$1 == INDEX {print $2}')
                 selectServer
         fi
 }
@@ -54,7 +53,7 @@ selectServer () {
                 then
                 selectCategory
         else
-                SERVER_NAME=$(echo "$SERVER_LIST" | grep -w "$SERVER_INDEX" | awk {'print $2'})
+                SERVER_NAME=$(echo "$SERVER_LIST" | awk -v INDEX=$SERVER_INDEX '$1 == INDEX {print $2}')
                 FULL_PATH="$ROOT_DIR/$CATEGORY_NAME/$SERVER_NAME"
         fi
 }
@@ -65,7 +64,7 @@ viewHistory () {
         if [[ $HISTORY_INDEX == "<-" || -z $HISTORY_INDEX ]]
                 then mainMenu
         else
-                HISTORY_ITEM=$(echo "$HISTORY_LIST" | grep -w "$HISTORY_INDEX" | awk {'print $2'})
+                HISTORY_ITEM=$(echo "$HISTORY_LIST" | awk -v INDEX=$HISTORY_INDEX '$1 == INDEX {print $2}')
                 searchServer $HISTORY_ITEM
         fi
 }
@@ -124,7 +123,7 @@ searchServer () {
                                 searchServer
                                 return
                         else
-                                SERVER_NAME=$(echo "$MATCHES_INDEXED" | grep -w "$FULL_PATH_INDEX" | awk {'print $2'})
+                                SERVER_NAME=$(echo "$MATCHES_INDEXED" | awk -v INDEX=$FULL_PATH_INDEX '$1 == INDEX {print $2}')
                                 searchServer $SERVER_NAME
                         fi
                 fi
