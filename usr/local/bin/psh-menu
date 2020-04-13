@@ -2,12 +2,17 @@
 
 # Interactive menu to select or search servers and pass to psh script
 # Author: Seff P.
-# Version: 20200409
+# Version: 20200413
 
 source /etc/psh/default.conf
 
 cleanExit () {
-        clear && exit 0
+        if dialog --stdout --yesno "Do you want to exit the $MAIN_TITLE" 6 60
+                then
+                exit 0
+        else
+                exec ${PSH_MENU_BIN}
+        fi
 }
 
 trap cleanExit INT
@@ -67,9 +72,9 @@ viewHistory () {
 
 saveHistory() {
         ENTRY=$(echo "$1" | xargs -L 1 basename)
-        echo "$(tail -n ${PSH_HISTORY_LENGTH} ${PSH_HISTORY_FILE})" > ${PSH_HISTORY_FILE}
         sed -i "/$ENTRY/d" ${PSH_HISTORY_FILE}
         echo "$ENTRY" >> ${PSH_HISTORY_FILE}
+        echo "$(tail -n ${PSH_HISTORY_LENGTH} ${PSH_HISTORY_FILE})" > ${PSH_HISTORY_FILE}
 }
 
 searchServer () {
