@@ -2,7 +2,7 @@
 
 # Interactive menu to select or search servers and pass to psh script
 # Author: Seff P.
-# Version: 20200413
+# Version: 20200630
 
 source /etc/psh/default.conf
 
@@ -82,7 +82,7 @@ searchServer () {
         else
                 INPUT=$(dialog --stdout --no-cancel --inputbox "Search a hostname or IP" 0 50)
         fi
-        INPUT=$(echo $INPUT | sed 's/\.$//g')
+        INPUT=$(echo $INPUT | sed 's/\.$//g' | sed -E 's|^.*//||g' | sed 's|^www\.||g' | cut -d'/' -f1)
         # echo "DEBUG: input is $INPUT"
         if [ "$INPUT" ]
                 then
