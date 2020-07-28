@@ -2,11 +2,11 @@
 
 # Interactive menu to select or search servers and pass to psh script
 # Author: Seff P.
-# Version: 20200630
+# Version: 20200728
 
 source /etc/psh/default.conf
 
-cleanExit () {
+confirmExit () {
         if dialog --stdout --yesno "Do you want to exit the $MAIN_TITLE" 6 60
                 then
                 exit 0
@@ -15,10 +15,10 @@ cleanExit () {
         fi
 }
 
-trap cleanExit INT
+trap confirmExit INT
 
 mainMenu () {
-        MAIN_MENU=$(dialog  --stdout --no-ok --no-cancel  --backtitle "$MAIN_TITLE" --menu "Select an Option" 0 50 0 1 "Search a hostname or IP" 2 "Select a ${CATEGORY} from list" 3 "View recent history")
+        MAIN_MENU=$(dialog  --stdout --no-ok --no-cancel  --backtitle "$MAIN_TITLE" --menu "Select an Option" 0 50 0 1 "Search a hostname or IP" 2 "Select a ${CATEGORY} from list" 3 "View recent history" 4 "Exit from psh-menu")
         case $MAIN_MENU in
                 1)
                         searchServer
@@ -29,8 +29,11 @@ mainMenu () {
                 3)
                         viewHistory
                         ;;
+		4)
+			exit
+			;;
                 *)
-                        cleanExit
+                        confirmExit
                         ;;
         esac
 }
