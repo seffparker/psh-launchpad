@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Interactive menu to select or search servers and pass to psh script
-# Author: Seff P.
-# Version: 20200728
+# Author: Seff Parker
+# Version: 20200804
 
 source /etc/psh/default.conf
 
@@ -80,40 +80,56 @@ saveHistory() {
 }
 
 searchServer () {
+
+	# Prepare the input
         if [ "$1" ]
                 then INPUT=$1
         else
                 INPUT=$(dialog --stdout --no-cancel --inputbox "Search a hostname or IP" 0 50)
         fi
-        INPUT=$(echo $INPUT | sed 's/\.$//g' | sed -E 's|^.*//||g' | sed 's|^www\.||g' | cut -d'/' -f1)
+        INPUT=$(echo $INPUT | sed -E 's|^.*//||g' | sed 's|^www\.||g' | cut -d'/' -f1 | sed 's/\.$//g')
         # echo "DEBUG: input is $INPUT"
-        if [ "$INPUT" ]
+
+        if [[ ! -z "$INPUT" ]]
                 then
-                if echo "$INPUT" | grep -Pq "^[\d]+\.[\d]+\.[\d]+\.[\d]+\$"
+
+		# Find matching filename
+		MATCHES_FULLPATH=$(find -L $ROOT_DIR -iname "*$INPUT*" -type f)
+
+		# Or try matching contents
+		[[ -z $MATCHES_FULLPATH ]] && MATCHES_FULLPATH=$(grep -ril "$INPUT" $ROOT_DIR)
+
+		# Or, try rDNS for IP
+                if [[ -z $MATCHES_FULLPATH ]] && echo "$INPUT" | grep -Pq "^[\d]+\.[\d]+\.[\d]+\.[\d]+\$"
                         then
                         # echo "DEBUG: input $INPUT is an IP"
                         INPUT=$(dig +short -x $INPUT)
-                        searchServer $INPUT
-                        return
+                        if [[ ! -z $INPUT ]]
+				then searchServer $INPUT
+                        	return
+			fi
                 fi
-                MATCHES_FULLPATH=$(find -L $ROOT_DIR -iname "*$INPUT*" -type f)
-                MATCHES_COUNT=$(echo "$MATCHES_FULLPATH" | grep -c .)
 
-                if [[ $MATCHES_COUNT == 0 ]]
-                        then
-                        IP_FROM_DOMAIN=$(dig +short "$INPUT" | head -1)
-                        if [[ "$IP_FROM_DOMAIN" && -z "$RDNS_TRIED" ]]
+		# Or, try DNS for domain name
+		if [[ -z $MATCHES_FULLPATH && -z "$DNS_TRIED" ]]
+			then
+			IP_FROM_DOMAIN=$(dig +short "$INPUT" | head -1)
+			if [[ "$IP_FROM_DOMAIN" ]]
                                 then
-                                RDNS_TRIED=true
+                                DNS_TRIED=true
                                 SEARCH_DOMAIN=$INPUT
                                 searchServer $IP_FROM_DOMAIN
-                        else
-                                dialog --colors --msgbox "\Z1No matches found!\Zn" 7 50
-                                unset SEARCH_DOMAIN
-                                unset RDNS_TRIED
-                                CLEAR=1
-                                searchServer
-                        fi
+				return
+			fi
+		fi
+
+                MATCHES_COUNT=$(echo "$MATCHES_FULLPATH" | grep -c .)
+                if [[ $MATCHES_COUNT == 0 ]]
+			then
+                        dialog --colors --msgbox "\Z1No matches found!\Zn" 7 50
+                        unset SEARCH_DOMAIN DNS_TRIED
+                        CLEAR=1
+                        searchServer
                         return
                 elif [[ $MATCHES_COUNT == 1 ]]
                         then FULL_PATH=$MATCHES_FULLPATH
@@ -143,7 +159,7 @@ else
         mainMenu
         CLEAR=1
 fi
-[[ "$CLEAR" ]] && clear
+# [[ "$CLEAR" ]] && clear
 
 saveHistory ${FULL_PATH}
 sudo ${PSH_LOGIN_BIN} ${FULL_PATH} ${SEARCH_DOMAIN}
