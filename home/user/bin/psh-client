@@ -2,20 +2,21 @@
 
 ## PSH Launchpad client-side script
 ## Author: Seff P.
-## Version: 20200416
+## Version: 20200710
 
 # psh-launchpad server IP/hostname
 PSH_SERVER="" 
+SSH_PORT=""
 
 # SSH username to access the psh-launchpad
 # USER="some other user"
 
-EXTRA_OPT="-o LogLevel=ERROR -o StrictHostKeyChecking=no"
+EXTRA_OPT="-o LogLevel=ERROR -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPath="~/.ssh/%r@%h-%p" -o ControlPersist=300"
 
 # Pass optional search string to the psh-launchpad server
 export LC_0=$1
 
-ssh -t -o SendEnv=LC_0 ${EXTRA_OPT} ${USER}@${PSH_SERVER}
+ssh -t -o SendEnv=LC_0 ${EXTRA_OPT} ${USER}@${PSH_SERVER} -p ${SSH_PORT}
 
 # Reset the TERM colours to defaults
 echo -en "\e[0m"
