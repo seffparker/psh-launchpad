@@ -113,7 +113,11 @@ searchServer () {
 		# Or, try DNS for domain name
 		if [[ -z $MATCHES_FULLPATH && -z "$DNS_TRIED" ]]
 			then
-			IP_FROM_DOMAIN=$(dig +short "$INPUT" | head -1)
+			for DNS_SERVER in $DNS_SERVERS
+				do
+				IP_FROM_DOMAIN=$(dig @${DNS_SERVER} +short "$INPUT" | head -1)
+				[[ ! -z $IP_FROM_DOMAIN ]] && break
+			done
 			if [[ "$IP_FROM_DOMAIN" ]]
                                 then
                                 DNS_TRIED=true
