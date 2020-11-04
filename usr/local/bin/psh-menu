@@ -2,7 +2,7 @@
 
 # Interactive menu to select or search servers and pass to psh script
 # Author: Seff Parker
-# Version: 20200804
+# Version: 20201104
 
 source /etc/psh/default.conf
 
@@ -11,6 +11,7 @@ confirmExit () {
                 then
                 exit 0
         else
+		unset LC_0
                 exec ${PSH_MENU_BIN}
         fi
 }
