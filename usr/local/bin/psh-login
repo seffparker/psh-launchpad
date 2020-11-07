@@ -2,7 +2,7 @@
 
 ## Script to intelligently login to servers using pre-setup SSH-keys
 ## Authors: Seff P.
-## Version: 20200630
+## Version: 20201107
 
 source /etc/psh/default.conf
 
@@ -27,16 +27,6 @@ SSH_CHOST=$(who | grep -w $PTS | awk {'print $5'})
 DATE_TIME=$(date +%Y%m%d%H%M)
 CMD=$(cat $FULL_PATH)
 SERVER_NAME=$(basename $FULL_PATH)
-
-if [[ "$(stat -c %G $FULL_PATH)" == "superadmin" ]]
-        then
-        if ! [[ "$(groups $REAL_USER)" =~ "superadmin" ]]
-                then
-                dialog --colors --msgbox "\Z1Access Restricted! Please contact administrator if needed.\Zn" 5 63
-                echo "$(date +'[%F %T %Z]') - $REAL_USER $SSH_CHOST: Login attempt to $SERVER_NAME blocked. Not a member of superadmin" >> $LOGIN_LOG
-                exit 3 # Forbidden
-        fi
-fi
 
 mkdir -p ${SESSION_LOG_PATH}/${SERVER_NAME}
 if [[ $CMD == ssh* ]]
