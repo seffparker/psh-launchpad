@@ -2,8 +2,9 @@
 
 # Interactive menu to select or search servers and pass to psh script
 # Author: Seff Parker
-# Version: 20201104
+# Version: 20201107
 
+exec 2> /dev/null
 source /etc/psh/default.conf
 
 confirmExit () {
@@ -12,7 +13,7 @@ confirmExit () {
                 exit 0
         else
 		unset LC_0
-                exec ${PSH_MENU_BIN}
+		exec ${PSH_MENU_BIN}
         fi
 }
 
@@ -40,7 +41,7 @@ mainMenu () {
 }
 
 selectCategory () {
-        CATEGORY_LIST=$(ls -1 $ROOT_DIR | nl)
+        CATEGORY_LIST=$(find $ROOT_DIR/ -maxdepth 1 -type d -readable  | awk -F / '{print $NF}' | nl)
         CATEGORY_INDEX=$(dialog --stdout --scrollbar --no-ok --no-cancel --menu "Select a ${CATEGORY}" 0 0 0 "<-" "Back to Main Menu" $CATEGORY_LIST)
         if [[ $CATEGORY_INDEX == "<-" || -z $CATEGORY_INDEX ]]
                 then mainMenu
@@ -51,7 +52,7 @@ selectCategory () {
 }
 
 selectServer () {
-        SERVER_LIST=$(ls -1 $ROOT_DIR/$CATEGORY_NAME | nl)
+        SERVER_LIST=$(find $ROOT_DIR/$CATEGORY_NAME/ -maxdepth 1 -type f -readable | awk -F / '{print $NF}' | nl)
         SERVER_INDEX=$(dialog --stdout --scrollbar --no-ok --no-cancel --menu "Select a Server" 0 0 0 "<-" "Back to ${CATEGORY} list" $SERVER_LIST)
         if [[ $SERVER_INDEX == "<-" || -z $SERVER_INDEX ]]
                 then
@@ -95,7 +96,7 @@ searchServer () {
                 then
 
 		# Find matching filename
-		MATCHES_FULLPATH=$(find -L $ROOT_DIR -iname "*$INPUT*" -type f)
+		MATCHES_FULLPATH=$(find -L $ROOT_DIR -iname "*$INPUT*" -type f -readable)
 
 		# Or try matching contents
 		[[ -z $MATCHES_FULLPATH ]] && MATCHES_FULLPATH=$(grep -ril "$INPUT" $ROOT_DIR)
