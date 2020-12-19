@@ -2,7 +2,7 @@
 
 ## PSH Launchpad client-side script
 ## Author: Seff P.
-## Version: 20200710
+## Version: 20201219
 
 # psh-launchpad server IP/hostname
 PSH_SERVER="" 
