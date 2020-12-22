@@ -1,0 +1,18 @@
+/var/log/psh/session/*/*/*.log
+	{
+	daily
+	nocreate
+	nocopy
+	minage 10
+	maxage 60
+	compress
+	rotate 1
+}
+
+/var/log/psh/login.log
+	{
+	daily
+	size 1M
+	rotate 5
+	nocompress
+}	
