@@ -2,7 +2,7 @@
 
 ## Script to intelligently login to servers using pre-setup SSH-keys
 ## Authors: Seff P.
-## Version: 2.0.0 20201108
+## Version: 2.1.0 20201224
 
 source /etc/psh/default.conf
 
@@ -20,30 +20,31 @@ elif [[ ! -f $FULL_PATH ]]
         exit 4 # Not found
 fi
 
-PTS=$(tty | grep -Po pts.*)
-REAL_USER=$(who | grep -w $PTS | awk {'print $1'})
-PTS=$(tty | grep -Po pts.*)
-SSH_CHOST=$(who | grep -w $PTS | awk {'print $5'})
-DATE_TIME=$(date +%Y%m%d%H%M)
 CMD=$(cat $FULL_PATH)
 
 if [[ $CMD == ssh* ]]
 then
+	PTS=$(tty | grep -Po pts.*)
+	REAL_USER=$(who | grep -w $PTS | awk {'print $1'})
+	SSH_CHOST=$(who | grep -w $PTS | awk {'print $5'})
+	DATE_TIME=$(date +%Y%m%d_%H%M)
+	SESSION_ID="$(cat /proc/$$/loginuid)-$(cat /proc/$$/sessionid)-$$"
 	SERVER_NAME="${FULL_PATH##*/}"
 	SERVER_GROUP=$(basename ${FULL_PATH%/*})
-	SESSION_LOG_FILE=${SESSION_LOG_PATH}/${SERVER_GROUP}/${SERVER_NAME}/${SERVER_NAME}-${REAL_USER}-$$-${DATE_TIME}.log
+	SESSION_LOG_FILE=${SESSION_LOG_PATH}/${SERVER_GROUP}/${SERVER_NAME}/${SERVER_NAME}-${REAL_USER}-${SESSION_ID}-${DATE_TIME}.log
+
 	mkdir -p ${SESSION_LOG_PATH}/${SERVER_GROUP}/${SERVER_NAME}
         echo -e "\n${G}Logging in to:${W} $SERVER_NAME"
         [[ "$SEARCH_DOMAIN" ]] && echo -e "${G}Domain name:${W} $SEARCH_DOMAIN"
         echo -e "${G}Executing the command:${W} $CMD\n"
-        echo "$(date +'[%F %T %Z]') - $REAL_USER $SSH_CHOST: Logging into $SERVER_NAME (Session ID: $(cat /proc/$$/loginuid)-$$)" >> $LOGIN_LOG
+        echo "$(date +'[%F %T %Z]') - $REAL_USER $SSH_CHOST: Logging into $SERVER_NAME (Session ID: ${SESSION_ID}" >> $LOGIN_LOG
         TIME_LOGIN=$(date +%s)
         $CMD $SSH_EXTRA_OPT | tee -a $SESSION_LOG_FILE
         EXIT_CODE=$PIPESTATUS
         TIME_LOGOUT=$(date +%s)
         TIME_TOTAL=$(($TIME_LOGOUT-$TIME_LOGIN))
         TIME_SPENT=$(date -ud "@$TIME_TOTAL" +'%Hh:%Mm:%Ss')
-        echo "$(date +'[%F %T %Z]') - $REAL_USER $SSH_CHOST: Logout from $SERVER_NAME (Exit code: $EXIT_CODE, Duration: $TIME_SPENT, Session ID: $(cat /proc/$$/loginuid)-$$)" >> $LOGIN_LOG
+        echo "$(date +'[%F %T %Z]') - $REAL_USER $SSH_CHOST: Logout from $SERVER_NAME (Exit code: $EXIT_CODE, Duration: $TIME_SPENT, Session ID: ${SESSION_ID})" >> $LOGIN_LOG
         echo -e "\n${Y}Exited from:${W} $SERVER_NAME (Exit code: $EXIT_CODE, Session Duration: $TIME_SPENT)"
         echo -ne "\nPress ANY key to return..."
         NULL=$(read -n 1)
