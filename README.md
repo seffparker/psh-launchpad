@@ -13,7 +13,7 @@ An interactive BASH script to search/select servers to SSH into.
 ![PSH Menu Preview](https://raw.githubusercontent.com/seffparker/psh-launchpad/master/psh-menu-screen-1.png "PSH Menu Preview")
 
 # Features
-- Compatible with all exising SSH login menthods like password, publickey, or 2FA.
+- Compatible with all exising SSH login methods like password, publickey, or 2FA.
 - Pass the argument right from the SSH client machine.
 - Logs all logins, logout, and SSH session logs
 - History with custom record count
