@@ -2,7 +2,7 @@
 
 # Interactive menu to select or search servers and pass to psh script
 # Author: Seff Parker
-# Version: 20201108
+# Version: 20210318
 
 exec 3>&2 # Hide stderr
 source /etc/psh/default.conf
@@ -93,47 +93,53 @@ searchServer () {
         # echo "DEBUG: input is $INPUT"
 
         if [[ ! -z "$INPUT" ]]
-                then
-
-		# Find matching filename
-		MATCHES_FULLPATH=$(find -L $ROOT_DIR -iname "*$INPUT*" -type f -readable)
-
-		# Or try matching contents
-		[[ -z $MATCHES_FULLPATH ]] && MATCHES_FULLPATH=$(grep -ril "$INPUT" $ROOT_DIR)
-
-		# Or, try rDNS for IP
-                if [[ -z $MATCHES_FULLPATH ]] && echo "$INPUT" | grep -Pq "^[\d]+\.[\d]+\.[\d]+\.[\d]+\$"
-                        then
-                        # echo "DEBUG: input $INPUT is an IP"
-                        INPUT=$(dig +short -x $INPUT)
-                        if [[ ! -z $INPUT ]]
-				then searchServer $INPUT
-                        	return
+        	then
+		# Find exact filename
+		MATCHES_FULLPATH=$(find -L $ROOT_DIR -iname "$INPUT" -type f -readable)
+		if [[ -z $MATCHES_FULLPATH ]]
+			then
+			# try matching filename
+			MATCHES_FULLPATH=$(find -L $ROOT_DIR -iname "*$INPUT*" -type f -readable)
+			if [[ -z $MATCHES_FULLPATH ]]
+				then
+				# try matching contents
+				MATCHES_FULLPATH=$(grep -ril "$INPUT" $ROOT_DIR)
+		                if [[ -z $MATCHES_FULLPATH && ! $DNS_TRIED ]]
+		                        then
+					# try DNS for domain name
+		                        for DNS_SERVER in $DNS_SERVERS
+		                                do
+		                                IP_FROM_DOMAIN=$(dig @${DNS_SERVER} +short "$INPUT" | head -1)
+		                                [[ ! -z $IP_FROM_DOMAIN ]] && break
+		                        done
+		                        if [[ "$IP_FROM_DOMAIN" ]]
+		                                then
+		                                DNS_TRIED=true
+		                                SEARCH_DOMAIN=$INPUT
+		                                searchServer $IP_FROM_DOMAIN
+		                                return
+		                        fi
+		                fi
+				if [[ -z $MATCHES_FULLPATH ]]
+					then
+					# try rDNS for IP
+					echo "$INPUT" | grep -Pq "^[\d]+\.[\d]+\.[\d]+\.[\d]+\$"
+			                # echo "DEBUG: input $INPUT is an IP"
+                        		INPUT=$(dig +short -x $INPUT)
+                        		if [[ ! -z $INPUT ]]
+						then searchServer $INPUT
+                        			return
+					fi
+				fi
 			fi
                 fi
-
-		# Or, try DNS for domain name
-		if [[ -z $MATCHES_FULLPATH && -z "$DNS_TRIED" ]]
-			then
-			for DNS_SERVER in $DNS_SERVERS
-				do
-				IP_FROM_DOMAIN=$(dig @${DNS_SERVER} +short "$INPUT" | head -1)
-				[[ ! -z $IP_FROM_DOMAIN ]] && break
-			done
-			if [[ "$IP_FROM_DOMAIN" ]]
-                                then
-                                DNS_TRIED=true
-                                SEARCH_DOMAIN=$INPUT
-                                searchServer $IP_FROM_DOMAIN
-				return
-			fi
-		fi
 
                 MATCHES_COUNT=$(echo "$MATCHES_FULLPATH" | grep -c .)
                 if [[ $MATCHES_COUNT == 0 ]]
 			then
                         dialog --colors --msgbox "\Z1No matches found!\Zn" 7 50
-                        unset SEARCH_DOMAIN DNS_TRIED
+                        unset SEARCH_DOMAIN 
+			DNS_TRIED=false
                         CLEAR=1
                         searchServer
                         return
@@ -170,7 +176,7 @@ fi
 saveHistory ${FULL_PATH}
 
 exec 2>&3 3>&- # Restore stderr
-sudo ${PSH_LOGIN_BIN} ${FULL_PATH} ${SEARCH_DOMAIN}
-
 unset LC_0
+
+sudo ${PSH_LOGIN_BIN} ${FULL_PATH} ${SEARCH_DOMAIN}
 exec ${PSH_MENU_BIN}
