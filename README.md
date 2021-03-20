@@ -52,3 +52,27 @@ If multiple macthes are found, a menu will be generated with matched records.
 (logs all SSH session logs in real-time)
 ..
 ```
+
+/home/ssh_user/psh-menu_debug.log:
+```
+[2021-03-20 17:28:49 UTC] - ssh_user - raw input=https://www.sample-server.com/query?key=value
+[2021-03-20 17:28:49 UTC] - ssh_user - formatted input=sample-server.com
+[2021-03-20 17:28:49 UTC] - ssh_user - trying exact filename match
+[2021-03-20 17:28:49 UTC] - ssh_user - tyring wildcard filename match
+[2021-03-20 17:28:49 UTC] - ssh_user - trying content match
+[2021-03-20 17:28:49 UTC] - ssh_user - trying DNS
+[2021-03-20 17:28:49 UTC] - ssh_user - got dns=123.45.67.89
+[2021-03-20 17:28:49 UTC] - ssh_user - raw input=123.45.67.89
+[2021-03-20 17:28:49 UTC] - ssh_user - formatted input=123.45.67.89
+[2021-03-20 17:28:49 UTC] - ssh_user - trying exact filename match
+[2021-03-20 17:28:49 UTC] - ssh_user - tyring wildcard filename match
+[2021-03-20 17:28:49 UTC] - ssh_user - trying content match
+[2021-03-20 17:28:49 UTC] - ssh_user - input is an IP
+[2021-03-20 17:28:49 UTC] - ssh_user - got rDNS=rdns-of.sample-server.com.
+[2021-03-20 17:28:49 UTC] - ssh_user - raw input=rdns-of.sample-server.com.
+[2021-03-20 17:28:49 UTC] - ssh_user - formatted input=rdns-of.sample-server.com
+[2021-03-20 17:28:49 UTC] - ssh_user - trying exact filename match
+[2021-03-20 17:28:49 UTC] - ssh_user - match count=1
+[2021-03-20 17:28:49 UTC] - ssh_user - match=/etc/psh/clients/org/rdns-of.sample-server.com
+[2021-03-20 17:28:49 UTC] - ssh_user - saved rdns-of.sample-server.com into /home/ssh_user/.psh_history
+```
