@@ -2,7 +2,7 @@
 
 # Interactive menu to select or search servers and pass to psh script
 # Author: Seff Parker
-# Version: 20210318
+# Version: 20210320
 
 exec 3>&2 # Hide stderr
 source /etc/psh/default.conf
@@ -15,6 +15,12 @@ confirmExit () {
 		unset LC_0
 		exec ${PSH_MENU_BIN}
         fi
+}
+
+debug () {
+	if $DEBUG
+		then echo "$(date +'[%F %T %Z]') - $USER - $*" >> $DEBUG_LOG
+	fi
 }
 
 trap confirmExit INT
@@ -47,6 +53,7 @@ selectCategory () {
                 then mainMenu
         else
                 CATEGORY_NAME=$(echo "$CATEGORY_LIST" | awk -v INDEX=$CATEGORY_INDEX '$1 == INDEX {print $2}')
+		debug category=$CATEGORY_NAME
                 selectServer
         fi
 }
@@ -60,6 +67,7 @@ selectServer () {
         else
                 SERVER_NAME=$(echo "$SERVER_LIST" | awk -v INDEX=$SERVER_INDEX '$1 == INDEX {print $2}')
                 FULL_PATH="$ROOT_DIR/$CATEGORY_NAME/$SERVER_NAME"
+		debug fullpath=$FULL_PATH
         fi
 }
 
@@ -79,6 +87,7 @@ saveHistory() {
         sed -i "/$ENTRY/d" ${PSH_HISTORY_FILE}
         echo "$ENTRY" >> ${PSH_HISTORY_FILE}
         echo "$(tail -n ${PSH_HISTORY_LENGTH} ${PSH_HISTORY_FILE})" > ${PSH_HISTORY_FILE}
+	debug "saved $ENTRY into ${PSH_HISTORY_FILE}"
 }
 
 searchServer () {
@@ -89,24 +98,29 @@ searchServer () {
         else
                 INPUT=$(dialog --stdout --no-cancel --inputbox "Search a hostname or IP" 0 50)
         fi
+	debug "raw input=$INPUT"
         INPUT=$(echo $INPUT | sed -E 's|^.*//||g' | sed 's|^www\.||g' | cut -d'/' -f1 | sed 's/\.$//g')
-        # echo "DEBUG: input is $INPUT"
+	debug "formatted input=$INPUT"
 
         if [[ ! -z "$INPUT" ]]
         	then
 		# Find exact filename
+		debug "trying exact filename match"
 		MATCHES_FULLPATH=$(find -L $ROOT_DIR -iname "$INPUT" -type f -readable)
 		if [[ -z $MATCHES_FULLPATH ]]
 			then
 			# try matching filename
+			debug "tyring wildcard filename match"
 			MATCHES_FULLPATH=$(find -L $ROOT_DIR -iname "*$INPUT*" -type f -readable)
 			if [[ -z $MATCHES_FULLPATH ]]
 				then
 				# try matching contents
+				debug "trying content match"
 				MATCHES_FULLPATH=$(grep -ril "$INPUT" $ROOT_DIR)
-		                if [[ -z $MATCHES_FULLPATH && ! $DNS_TRIED ]]
+		                if [[ -z $MATCHES_FULLPATH ]] && [[ $DNS_TRIED != "true" ]]
 		                        then
 					# try DNS for domain name
+					debug "trying DNS"
 		                        for DNS_SERVER in $DNS_SERVERS
 		                                do
 		                                IP_FROM_DOMAIN=$(dig @${DNS_SERVER} +short "$INPUT" | head -1)
@@ -116,6 +130,7 @@ searchServer () {
 		                                then
 		                                DNS_TRIED=true
 		                                SEARCH_DOMAIN=$INPUT
+						debug "got dns=$IP_FROM_DOMAIN"
 		                                searchServer $IP_FROM_DOMAIN
 		                                return
 		                        fi
@@ -123,28 +138,33 @@ searchServer () {
 				if [[ -z $MATCHES_FULLPATH ]]
 					then
 					# try rDNS for IP
-					echo "$INPUT" | grep -Pq "^[\d]+\.[\d]+\.[\d]+\.[\d]+\$"
-			                # echo "DEBUG: input $INPUT is an IP"
+					if echo "$INPUT" | grep -Pq "^[\d]+\.[\d]+\.[\d]+\.[\d]+\$"
+					then
+			                debug "input is an IP"
                         		INPUT=$(dig +short -x $INPUT)
-                        		if [[ ! -z $INPUT ]]
-						then searchServer $INPUT
-                        			return
+                        			if [[ ! -z $INPUT ]]
+							then 
+								debug "got rDNS=$INPUT"
+								searchServer $INPUT
+                        				return
+						fi
 					fi
 				fi
 			fi
                 fi
 
                 MATCHES_COUNT=$(echo "$MATCHES_FULLPATH" | grep -c .)
+		debug "match count=$MATCHES_COUNT"
                 if [[ $MATCHES_COUNT == 0 ]]
 			then
                         dialog --colors --msgbox "\Z1No matches found!\Zn" 7 50
-                        unset SEARCH_DOMAIN 
-			DNS_TRIED=false
+                        unset SEARCH_DOMAIN DNS_TRIED
                         CLEAR=1
                         searchServer
                         return
                 elif [[ $MATCHES_COUNT == 1 ]]
                         then FULL_PATH=$MATCHES_FULLPATH
+				debug "match=$FULL_PATH"
                 else
                         CLEAR=1
                         MATCHES_INDEXED=$(echo "$MATCHES_FULLPATH" | xargs -L 1 basename | sort | nl)
