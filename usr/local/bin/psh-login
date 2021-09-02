@@ -2,7 +2,7 @@
 
 ## Script to intelligently login to servers using pre-setup SSH-keys
 ## Authors: Seff P.
-## Version: 2.1.1 20210127
+## Version: 2.1.2 20210902
 
 source /etc/psh/default.conf
 
@@ -50,7 +50,7 @@ then
         NULL=$(read -n 1)
 else
         echo -e "${R}ERROR: Invalid Command!${W}"
-	sleep 5
+	read -n 1 -s null
         exit 5 # Invalid Command
 
 fi
