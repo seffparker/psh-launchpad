@@ -46,8 +46,7 @@ then
         TIME_SPENT=$(date -ud "@$TIME_TOTAL" +'%Hh:%Mm:%Ss')
         echo "$(date +'[%F %T %Z]') - $SSH_USER $SSH_IP: Logout from ${SERVER_GROUP}/$SERVER_NAME (Exit code: $EXIT_CODE, Duration: $TIME_SPENT, Session ID: ${SESSION_ID})" >> $LOGIN_LOG
         echo -e "\n${Y}Exited from:${W} $SERVER_NAME (Exit code: $EXIT_CODE, Session Duration: $TIME_SPENT)"
-        echo -ne "\nPress ANY key to return..."
-        NULL=$(read -n 1)
+        read -n 1 -s -p $'\nPress ANY key to return...\n'
 else
         echo -e "${R}ERROR: Invalid Command!${W}"
 	read -n 1 -s null
