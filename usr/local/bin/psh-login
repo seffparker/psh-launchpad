@@ -50,6 +50,8 @@ then
         NULL=$(read -n 1)
 else
         echo -e "${R}ERROR: Invalid Command!${W}"
+	sleep 5
         exit 5 # Invalid Command
 
 fi
+
