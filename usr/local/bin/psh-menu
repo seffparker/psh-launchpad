@@ -2,9 +2,11 @@
 
 # Interactive menu to select or search servers and pass to psh script
 # Author: Seff Parker
-# Version: 20210320
+# Version: v2.0.2 20210404
 
 exec 3>&2 # Hide stderr
+exec 2> /dev/null # Hide stderr
+
 source /etc/psh/default.conf
 
 confirmExit () {
@@ -99,8 +101,12 @@ searchServer () {
                 INPUT=$(dialog --stdout --no-cancel --inputbox "Search a hostname or IP" 0 50)
         fi
 	debug "raw input=$INPUT"
-        INPUT=$(echo $INPUT | sed -E 's|^.*//||g' | sed 's|^www\.||g' | cut -d'/' -f1 | sed 's/\.$//g')
-	debug "formatted input=$INPUT"
+	if [[ -z $CLEANED_INPUT ]]
+		then
+			INPUT=$(echo $INPUT | sed -E 's|^.*//||g' | sed 's|^www\.||g' | cut -d'/' -f1 | sed 's/\.$//g')
+			CLEANED_INPUT=$INPUT
+			debug "formatted input=$INPUT"
+	fi
 
         if [[ ! -z "$INPUT" ]]
         	then
@@ -157,9 +163,9 @@ searchServer () {
 		debug "match count=$MATCHES_COUNT"
                 if [[ $MATCHES_COUNT == 0 ]]
 			then
-                        dialog --colors --msgbox "\Z1No matches found!\Zn" 7 50
-                        unset SEARCH_DOMAIN DNS_TRIED
+                        dialog --colors --msgbox "\Z1No matches found for: $CLEANED_INPUT\Zn" 7 50
                         CLEAR=1
+			unset SEARCH_DOMAIN DNS_TRIED CLEANED_INPUT
                         searchServer
                         return
                 elif [[ $MATCHES_COUNT == 1 ]]
@@ -175,6 +181,7 @@ searchServer () {
                                 return
                         else
                                 SERVER_NAME=$(echo "$MATCHES_INDEXED" | awk -v INDEX=$FULL_PATH_INDEX '$1 == INDEX {print $2}')
+				CLEANED_INPUT=skip
                                 searchServer $SERVER_NAME
                         fi
                 fi
@@ -200,3 +207,4 @@ unset LC_0
 
 sudo ${PSH_LOGIN_BIN} ${FULL_PATH} ${SEARCH_DOMAIN}
 exec ${PSH_MENU_BIN}
+
