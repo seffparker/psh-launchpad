@@ -4,7 +4,7 @@ An interactive BASH script to search/select servers to SSH into.
 ```
      +----------------+       +----------------+       +----------------+
      |                |       |                |       |                |
-     |   PSH Client   | ----> |   PSH Server   | ----> |   SSH Server   |
+     |   SSH Client   | ----> |   PSH Server   | ----> |   SSH Server   |
      |                |       |                |       |                |
      +----------------+       +----------------+       +----------------+
 ```
@@ -37,6 +37,7 @@ psh-client hostname.tld
 psh-client hosted-domain.com
 psh-client my-dev-server # filename
 psh-client dev # partial text match
+psh-client https://hostname.tld/subpath/?query=string
 ```
 If multiple macthes are found, a menu will be generated with matched records.
 
